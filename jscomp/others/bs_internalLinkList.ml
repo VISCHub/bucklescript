@@ -1,4 +1,4 @@
-(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+(* Copyright (C) 2017 Authors of BuckleScript
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -22,27 +22,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-(** Placeholder for BuckleScript data structures *)
+type 'a cell = {
+  head : 'a;
+  mutable tail : 'a opt_cell
+}
+and 'a opt_cell = 'a cell Js.null
+[@@bs.deriving abstract]
 
-(**/*)
-(**/*)
-module Bag = Bs_Bag
-module Cmp = Bs_Cmp
-module Hash = Bs_Hash
-module Array = Bs_Array
-module Queue = Bs_Queue
-module HashMap = Bs_HashMap
-module HashSet = Bs_HashSet
-module HashSetInt = Bs_HashSetInt
-module HashSetString = Bs_HashSetInt
-module HashMapString = Bs_HashMapString
-module HashMapInt = Bs_HashMapInt
-module Map = Bs_Map
-module Set = Bs_Set
-module MapInt = Bs_MapInt
-module MapString = Bs_MapString  
-module SetInt = Bs_SetInt
-module SetString = Bs_SetString
-module LinkList = Bs_LinkList
-module List = Bs_List
-
+external tailOpt : 'a cell -> 'a cell option = "tail"
+[@@bs.get] [@@bs.return null_to_opt] 
