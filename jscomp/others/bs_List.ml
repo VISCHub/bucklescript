@@ -38,8 +38,10 @@
 
 type 'a t = 'a list
 
-external mutableCell : 'a -> 'a t = "%makemutable"
-
+external mutableCell : 
+  'a -> 'a t ->  'a t = "#makemutablelist"
+external unsafeMutateTail : 
+  'a t -> 'a t -> unit = "#setfield1"    
 (*
    [mutableCell x] == [x]
    but tell the compiler that is a mutable cell, so it wont
@@ -80,39 +82,44 @@ let rec copyAux cellX prec =
   match cellX with
   | [] -> prec
   | h::t ->
-    let next = mutableCell h in
-    Obj.set_field (Obj.repr prec) 1 (Obj.repr next);
+    let next = mutableCell h [] in
+    (* here the mutable is mostly to telling compilers
+      dont inline [next], it is mutable
+    *)
+    unsafeMutateTail prec next ; 
     copyAux t next
 
 let rec copyAuxWithMap f cellX prec =
   match cellX with
-  | [] -> Obj.set_field (Obj.repr prec) 1 (Obj.repr [])
+  | [] -> 
+    unsafeMutateTail prec []
   | h::t ->
-    let next = mutableCell (f h [@bs]) in
-    Obj.set_field (Obj.repr prec) 1 (Obj.repr next);
+    let next = mutableCell (f h [@bs]) [] in
+    unsafeMutateTail prec next ; 
     copyAuxWithMap f t next
 
 let rec copyAuxWithMapI f i cellX prec =
   match cellX with
-  | [] -> Obj.set_field (Obj.repr prec) 1 (Obj.repr [])
+  | [] -> 
+    unsafeMutateTail prec []
   | h::t ->
-    let next = mutableCell (f i h [@bs]) in
-    Obj.set_field (Obj.repr prec) 1 (Obj.repr next);
+    let next = mutableCell (f i h [@bs]) [] in
+    unsafeMutateTail prec next ; 
     copyAuxWithMapI f (i + 1) t next
     
 let append xs ys =
   match xs with
   | [] -> ys
   | h::t ->
-    let cell = mutableCell h in       
-    Obj.set_field (Obj.repr @@ copyAux t cell) 1 (Obj.repr ys);
+    let cell = mutableCell h [] in       
+    unsafeMutateTail (copyAux t cell) ys; 
     cell
 
 let map xs f =
   match xs with
   | [] -> []
   | h::t ->
-    let cell = mutableCell (f h [@bs]) in
+    let cell = mutableCell (f h [@bs]) [] in
     copyAuxWithMap f t cell;
     cell
 
@@ -120,7 +127,7 @@ let map xs f =
 let rec mapi  f = function
     [] -> []
   | h::t -> 
-    let cell = mutableCell (f 0 h [@bs]) in 
+    let cell = mutableCell (f 0 h [@bs]) [] in 
     copyAuxWithMapI f 1 t cell;
     cell 
 
@@ -132,12 +139,12 @@ let init n f =
   else
   if n = 0 then []
   else
-    let headX = mutableCell (f 0 [@bs]) in
+    let headX = mutableCell (f 0 [@bs]) [] in
     let cur = ref headX in
     let i = ref 1 in
     while !i < n do
-      let v = mutableCell (f !i [@bs]) in
-      Obj.set_field (Obj.repr !cur) 1 (Obj.repr v) ;
+      let v = mutableCell (f !i [@bs]) [] in
+      unsafeMutateTail !cur v ; 
       cur := v ;
       incr i ;
     done
@@ -174,7 +181,7 @@ let rev l = revAppend l []
 
 let rec flattenAux prec xs =
   match xs with
-  | [] -> Obj.set_field (Obj.repr prec) 1 (Obj.repr [])
+  | [] -> unsafeMutateTail prec [] 
   | h::r -> flattenAux (copyAux h prec) r
   
 
@@ -183,7 +190,7 @@ let rec flatten xs =
   | [] -> []
   | []::xs -> flatten xs
   | (h::t):: r ->  
-    let cell = mutableCell h in 
+    let cell = mutableCell h [] in 
     flattenAux (copyAux t cell) r ;
     cell 
 
@@ -224,14 +231,14 @@ let rec map2 f l1 l2 =
   match (l1, l2) with
     ([], []) -> []
   | (a1::l1, a2::l2) -> let r = f a1 a2 [@bs] in r :: map2 f l1 l2
-  | (_, _) -> invalid_arg "List.map2"
+  | (_, _) -> [%assert "List.map2"]
 
 let rev_map2 f l1 l2 =
   let rec rmap2_f accu l1 l2 =
     match (l1, l2) with
     | ([], []) -> accu
     | (a1::l1, a2::l2) -> rmap2_f (f a1 a2 [@bs]:: accu) l1 l2
-    | (_, _) -> invalid_arg "List.rev_map2"
+    | (_, _) -> [%assert "List.rev_map2"]
   in
   rmap2_f [] l1 l2
 ;;
@@ -240,19 +247,19 @@ let rec iter2 f l1 l2 =
   match (l1, l2) with
     ([], []) -> ()
   | (a1::l1, a2::l2) -> f a1 a2 [@bs]; iter2 f l1 l2
-  | (_, _) -> invalid_arg "List.iter2"
+  | (_, _) -> [%assert "List.iter2"]
 
 let rec fold_left2 f accu l1 l2 =
   match (l1, l2) with
     ([], []) -> accu
   | (a1::l1, a2::l2) -> fold_left2 f (f accu a1 a2 [@bs]) l1 l2
-  | (_, _) -> invalid_arg "List.fold_left2"
+  | (_, _) -> [%assert "List.fold_left2"]
 
 let rec fold_right2 f l1 l2 accu =
   match (l1, l2) with
     ([], []) -> accu
   | (a1::l1, a2::l2) -> f a1 a2 (fold_right2 f l1 l2 accu) [@bs]
-  | (_, _) -> invalid_arg "List.fold_right2"
+  | (_, _) -> [%assert "List.fold_right2"]
 
 let rec for_all p = function
     [] -> true
@@ -266,13 +273,13 @@ let rec for_all2 p l1 l2 =
   match (l1, l2) with
     ([], []) -> true
   | (a1::l1, a2::l2) -> p a1 a2 [@bs] && for_all2 p l1 l2
-  | (_, _) -> invalid_arg "List.for_all2"
+  | (_, _) -> [%assert "List.for_all2"]
 
 let rec exists2 p l1 l2 =
   match (l1, l2) with
     ([], []) -> false
   | (a1::l1, a2::l2) -> p a1 a2 [@bs] || exists2 p l1 l2
-  | (_, _) -> invalid_arg "List.exists2"
+  | (_, _) -> [%assert "List.exists2"]
 
 let rec mem eq x = function
     [] -> false
@@ -334,7 +341,7 @@ let rec combine l1 l2 =
   match (l1, l2) with
     ([], []) -> []
   | (a1::l1, a2::l2) -> (a1, a2) :: combine l1 l2
-  | (_, _) -> invalid_arg "List.combine"
+  | (_, _) -> [%assert "List.combine"]
 
 (** sorting *)
 
