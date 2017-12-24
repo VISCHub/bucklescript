@@ -1,3 +1,26 @@
+(* Copyright (C) 2017 Authors of BuckleScript
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
 
 (*
@@ -40,14 +63,22 @@ type 'a t = 'a list
 
 external mutableCell : 
   'a -> 'a t ->  'a t = "#makemutablelist"
+(* 
+    [mutableCell x []] == [x]
+    but tell the compiler that is a mutable cell, so it wont
+    be mis-inlined in the future
+     dont inline a binding to mutable cell, it is mutable
+*)
 external unsafeMutateTail : 
   'a t -> 'a t -> unit = "#setfield1"    
+(*
+   - the cell is not empty   
+   - it is mutated
+*)  
 external unsafeTail :   
   'a t -> 'a t = "%field1"
 (*
-   [mutableCell x] == [x]
-   but tell the compiler that is a mutable cell, so it wont
-    be mis-inlined in the future
+   - the cell is not empty   
 *)
 
 let headOpt x =
@@ -79,10 +110,6 @@ let nthAssert x n =
   if n < 0 then [%assert "nthAssert"]
   else nthAuxAssert x n 
 
-(* [precX] or [precY] can be empty 
-   in that case, the address may change, so we need 
-   return some value 
-*)  
 let rec partitionAux p cell precX precY =
   match cell with
   | [] -> ()
@@ -99,20 +126,26 @@ let rec partitionAux p cell precX precY =
         partitionAux p t precX next 
       end 
 
+let rec splitAux cell precX precY = 
+  match cell with 
+  | [] -> () 
+  | (a,b)::t -> 
+    let nextA = mutableCell a [] in 
+    let nextB = mutableCell b [] in 
+    unsafeMutateTail precX nextA;  
+    unsafeMutateTail precY nextB; 
+    splitAux t nextA nextB
 
-
-
-(* return the tail *)  
-let rec copyAux cellX prec =
+(* return the tail pointer so it can continue copy other 
+  list
+*)  
+let rec copyAuxCont cellX prec =
   match cellX with
   | [] -> prec
   | h::t ->
     let next = mutableCell h [] in
-    (* here the mutable is mostly to telling compilers
-       dont inline [next], it is mutable
-    *)
     unsafeMutateTail prec next ; 
-    copyAux t next
+    copyAuxCont t next
 
 let rec copyAuxWitFilter f cellX prec =
   match cellX with
@@ -137,6 +170,15 @@ let rec copyAuxWithMap f cellX prec =
     copyAuxWithMap f t next
 
 
+let rec zipAux  cellX cellY prec =
+  match cellX, cellY with
+  | h1::t1, h2::t2 -> 
+    let next = mutableCell ( h1, h2) [] in
+    unsafeMutateTail prec next ; 
+    zipAux  t1 t2 next
+  | [],_ | _,[] -> 
+    ()
+
 let rec copyAuxWithMap2 f cellX cellY prec =
   match cellX, cellY with
   | h1::t1, h2::t2 -> 
@@ -160,7 +202,7 @@ let append xs ys =
   | [] -> ys
   | h::t ->
     let cell = mutableCell h [] in       
-    unsafeMutateTail (copyAux t cell) ys; 
+    unsafeMutateTail (copyAuxCont t cell) ys; 
     cell
 
 let map xs f =
@@ -236,7 +278,7 @@ let rev l = revAppend l []
 let rec flattenAux prec xs =
   match xs with
   | [] -> unsafeMutateTail prec [] 
-  | h::r -> flattenAux (copyAux h prec) r
+  | h::r -> flattenAux (copyAuxCont h prec) r
 
 
 let rec flatten xs =     
@@ -245,7 +287,7 @@ let rec flatten xs =
   | []::xs -> flatten xs
   | (h::t):: r ->  
     let cell = mutableCell h [] in 
-    flattenAux (copyAux t cell) r ;
+    flattenAux (copyAuxCont t cell) r ;
     cell 
 
 
@@ -391,237 +433,22 @@ let partition p l =
       unsafeTail nextX, nextY 
 
 
-let rec split = function
-    [] -> ([], [])
+let rec split xs = 
+  match xs with 
+  | [] -> ([], [])
   | (x,y)::l ->
-    let (rx, ry) = split l in (x::rx, y::ry)
+    let cellX = mutableCell x [] in
+    let cellY = mutableCell y [] in 
+    splitAux l cellX cellY ; 
+    cellX, cellY
+    
 
-let rec combine l1 l2 =
+let rec zip l1 l2 =
   match (l1, l2) with
-    ([], []) -> []
-  | (a1::l1, a2::l2) -> (a1, a2) :: combine l1 l2
-  | (_, _) -> [%assert "List.combine"]
+    _, [] | [], _ -> []
+  | (a1::l1, a2::l2) -> 
+    let cell = mutableCell (a1,a2) [] in 
+    zipAux l1 l2 cell; 
+    cell
 
-(** sorting *)
-
-let rec merge cmp l1 l2 =
-  match l1, l2 with
-  | [], l2 -> l2
-  | l1, [] -> l1
-  | h1 :: t1, h2 :: t2 ->
-    if cmp h1 h2 [@bs] <= 0
-    then h1 :: merge cmp t1 l2
-    else h2 :: merge cmp l1 t2
-;;
-
-let rec chop k l =
-  if k = 0 then l else begin
-    match l with
-    | x::t -> chop (k-1) t
-    | _ -> assert false
-  end
-;;
-
-let stable_sort cmp l =
-  let rec rev_merge l1 l2 accu =
-    match l1, l2 with
-    | [], l2 -> revAppend l2 accu
-    | l1, [] -> revAppend l1 accu
-    | h1::t1, h2::t2 ->
-      if cmp h1 h2 [@bs] <= 0
-      then rev_merge t1 l2 (h1::accu)
-      else rev_merge l1 t2 (h2::accu)
-  in
-  let rec rev_merge_rev l1 l2 accu =
-    match l1, l2 with
-    | [], l2 -> revAppend l2 accu
-    | l1, [] -> revAppend l1 accu
-    | h1::t1, h2::t2 ->
-      if cmp h1 h2 [@bs] > 0
-      then rev_merge_rev t1 l2 (h1::accu)
-      else rev_merge_rev l1 t2 (h2::accu)
-  in
-  let rec sort n l =
-    match n, l with
-    | 2, x1 :: x2 :: _ ->
-      if cmp x1 x2 [@bs] <= 0 then [x1; x2] else [x2; x1]
-    | 3, x1 :: x2 :: x3 :: _ ->
-      if cmp x1 x2 [@bs] <= 0 then begin
-        if cmp x2 x3 [@bs] <= 0 then [x1; x2; x3]
-        else if cmp x1 x3 [@bs] <= 0 then [x1; x3; x2]
-        else [x3; x1; x2]
-      end else begin
-        if cmp x1 x3 [@bs] <= 0 then [x2; x1; x3]
-        else if cmp x2 x3 [@bs] <= 0 then [x2; x3; x1]
-        else [x3; x2; x1]
-      end
-    | n, l ->
-      let n1 = n asr 1 in
-      let n2 = n - n1 in
-      let l2 = chop n1 l in
-      let s1 = rev_sort n1 l in
-      let s2 = rev_sort n2 l2 in
-      rev_merge_rev s1 s2 []
-  and rev_sort n l =
-    match n, l with
-    | 2, x1 :: x2 :: _ ->
-      if cmp x1 x2 [@bs] > 0 then [x1; x2] else [x2; x1]
-    | 3, x1 :: x2 :: x3 :: _ ->
-      if cmp x1 x2 [@bs] > 0 then begin
-        if cmp x2 x3 [@bs] > 0 then [x1; x2; x3]
-        else if cmp x1 x3 [@bs] > 0 then [x1; x3; x2]
-        else [x3; x1; x2]
-      end else begin
-        if cmp x1 x3 [@bs] > 0 then [x2; x1; x3]
-        else if cmp x2 x3 [@bs] > 0 then [x2; x3; x1]
-        else [x3; x2; x1]
-      end
-    | n, l ->
-      let n1 = n asr 1 in
-      let n2 = n - n1 in
-      let l2 = chop n1 l in
-      let s1 = sort n1 l in
-      let s2 = sort n2 l2 in
-      rev_merge s1 s2 []
-  in
-  let len = length l in
-  if len < 2 then l else sort len l
-;;
-
-let sort = stable_sort;;
-let fast_sort = stable_sort;;
-
-(* Note: on a list of length between about 100000 (depending on the minor
-   heap size and the type of the list) and Sys.max_array_size, it is
-   actually faster to use the following, but it might also use more memory
-   because the argument list cannot be deallocated incrementally.
-
-   Also, there seems to be a bug in this code or in the
-   implementation of obj_truncate.
-
-   external obj_truncate : 'a array -> int -> unit = "caml_obj_truncate"
-
-   let array_to_list_in_place a =
-   let l = Array.length a in
-   let rec loop accu n p =
-    if p <= 0 then accu else begin
-      if p = n then begin
-        obj_truncate a p;
-        loop (a.(p-1) :: accu) (n-1000) (p-1)
-      end else begin
-        loop (a.(p-1) :: accu) n (p-1)
-      end
-    end
-   in
-   loop [] (l-1000) l
-   ;;
-
-   let stable_sort cmp l =
-   let a = Array.of_list l in
-   Array.stable_sort cmp a;
-   array_to_list_in_place a
-   ;;
-*)
-
-
-(** sorting + removing duplicates *)
-
-let sort_uniq cmp l =
-  let rec rev_merge l1 l2 accu =
-    match l1, l2 with
-    | [], l2 -> revAppend l2 accu
-    | l1, [] -> revAppend l1 accu
-    | h1::t1, h2::t2 ->
-      let c = cmp h1 h2 [@bs] in
-      if c = 0 then rev_merge t1 t2 (h1::accu)
-      else if c < 0
-      then rev_merge t1 l2 (h1::accu)
-      else rev_merge l1 t2 (h2::accu)
-  in
-  let rec rev_merge_rev l1 l2 accu =
-    match l1, l2 with
-    | [], l2 -> revAppend l2 accu
-    | l1, [] -> revAppend l1 accu
-    | h1::t1, h2::t2 ->
-      let c = cmp h1 h2 [@bs] in
-      if c = 0 then rev_merge_rev t1 t2 (h1::accu)
-      else if c > 0
-      then rev_merge_rev t1 l2 (h1::accu)
-      else rev_merge_rev l1 t2 (h2::accu)
-  in
-  let rec sort n l =
-    match n, l with
-    | 2, x1 :: x2 :: _ ->
-      let c = cmp x1 x2 [@bs] in
-      if c = 0 then [x1]
-      else if c < 0 then [x1; x2] else [x2; x1]
-    | 3, x1 :: x2 :: x3 :: _ ->
-      let c = cmp x1 x2 [@bs] in
-      if c = 0 then begin
-        let c = cmp x2 x3 [@bs] in
-        if c = 0 then [x2]
-        else if c < 0 then [x2; x3] else [x3; x2]
-      end else if c < 0 then begin
-        let c = cmp x2 x3 [@bs] in
-        if c = 0 then [x1; x2]
-        else if c < 0 then [x1; x2; x3]
-        else let c = cmp x1 x3 [@bs] in
-          if c = 0 then [x1; x2]
-          else if c < 0 then [x1; x3; x2]
-          else [x3; x1; x2]
-      end else begin
-        let c = cmp x1 x3 [@bs] in
-        if c = 0 then [x2; x1]
-        else if c < 0 then [x2; x1; x3]
-        else let c = cmp x2 x3 [@bs] in
-          if c = 0 then [x2; x1]
-          else if c < 0 then [x2; x3; x1]
-          else [x3; x2; x1]
-      end
-    | n, l ->
-      let n1 = n asr 1 in
-      let n2 = n - n1 in
-      let l2 = chop n1 l in
-      let s1 = rev_sort n1 l in
-      let s2 = rev_sort n2 l2 in
-      rev_merge_rev s1 s2 []
-  and rev_sort n l =
-    match n, l with
-    | 2, x1 :: x2 :: _ ->
-      let c = cmp x1 x2 [@bs] in
-      if c = 0 then [x1]
-      else if c > 0 then [x1; x2] else [x2; x1]
-    | 3, x1 :: x2 :: x3 :: _ ->
-      let c = cmp x1 x2 [@bs] in
-      if c = 0 then begin
-        let c = cmp x2 x3 [@bs] in
-        if c = 0 then [x2]
-        else if c > 0 then [x2; x3] else [x3; x2]
-      end else if c > 0 then begin
-        let c = cmp x2 x3 [@bs] in
-        if c = 0 then [x1; x2]
-        else if c > 0 then [x1; x2; x3]
-        else let c = cmp x1 x3 [@bs] in
-          if c = 0 then [x1; x2]
-          else if c > 0 then [x1; x3; x2]
-          else [x3; x1; x2]
-      end else begin
-        let c = cmp x1 x3 [@bs] in
-        if c = 0 then [x2; x1]
-        else if c > 0 then [x2; x1; x3]
-        else let c = cmp x2 x3 [@bs] in
-          if c = 0 then [x2; x1]
-          else if c > 0 then [x2; x3; x1]
-          else [x3; x2; x1]
-      end
-    | n, l ->
-      let n1 = n asr 1 in
-      let n2 = n - n1 in
-      let l2 = chop n1 l in
-      let s1 = sort n1 l in
-      let s2 = sort n2 l2 in
-      rev_merge s1 s2 []
-  in
-  let len = length l in
-  if len < 2 then l else sort len l
-;;
+(* TODO: add take/drop*)
