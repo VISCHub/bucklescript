@@ -321,12 +321,12 @@ eq("PARTITION", Bs_List.partition((function (x) {
       ]
     ]);
 
-eq("SPLIT", Bs_List.split(/* [] */0), /* tuple */[
+eq("UNZIP", Bs_List.unzip(/* [] */0), /* tuple */[
       /* [] */0,
       /* [] */0
     ]);
 
-eq("SPLIT", Bs_List.split(/* :: */[
+eq("UNZIP", Bs_List.unzip(/* :: */[
           /* tuple */[
             1,
             2
@@ -343,7 +343,7 @@ eq("SPLIT", Bs_List.split(/* :: */[
       ]
     ]);
 
-eq("SPLIT", Bs_List.split(/* :: */[
+eq("UNZIP", Bs_List.unzip(/* :: */[
           /* tuple */[
             1,
             2
@@ -476,17 +476,15 @@ function add(a, b) {
   return a + b | 0;
 }
 
-var a = Bs_List.init(10, id);
+var length_10_id = Bs_List.init(10, id);
 
-var b$1 = Bs_List.init(10, id);
-
-var c = Bs_List.init(8, id);
+var length_8_id = Bs_List.init(8, id);
 
 var d = Bs_List.init(10, (function (x) {
         return (x << 1);
       }));
 
-eq("MAP2", Bs_List.map2(add, a, b$1), d);
+eq("MAP2", Bs_List.map2(add, length_10_id, length_10_id), d);
 
 eq("MAP2", Bs_List.map2(add, /* [] */0, /* :: */[
           1,
@@ -500,7 +498,7 @@ eq("MAP2", Bs_List.map2(add, /* :: */[
 
 eq("MAP2", Bs_List.map2(add, /* [] */0, /* [] */0), /* [] */0);
 
-eq("MAP2", Bs_List.map2(add, a, b$1), Bs_List.append(Bs_List.map(c, (function (x) {
+eq("MAP2", Bs_List.map2(add, length_10_id, length_10_id), Bs_List.append(Bs_List.map(length_8_id, (function (x) {
                 return (x << 1);
               })), /* :: */[
           16,
@@ -510,19 +508,174 @@ eq("MAP2", Bs_List.map2(add, a, b$1), Bs_List.append(Bs_List.map(c, (function (x
           ]
         ]));
 
+eq("TAKE", Bs_List.takeOpt(/* :: */[
+          1,
+          /* :: */[
+            2,
+            /* :: */[
+              3,
+              /* [] */0
+            ]
+          ]
+        ], 2), /* Some */[/* :: */[
+        1,
+        /* :: */[
+          2,
+          /* [] */0
+        ]
+      ]]);
+
+eq("TAKE", Bs_List.takeOpt(/* [] */0, 1), /* None */0);
+
+eq("TAKE", Bs_List.takeOpt(/* :: */[
+          1,
+          /* :: */[
+            2,
+            /* [] */0
+          ]
+        ], 3), /* None */0);
+
+eq("TAKE", Bs_List.takeOpt(/* :: */[
+          1,
+          /* :: */[
+            2,
+            /* [] */0
+          ]
+        ], 2), /* Some */[/* :: */[
+        1,
+        /* :: */[
+          2,
+          /* [] */0
+        ]
+      ]]);
+
+eq("TAKE", Bs_List.takeOpt(length_10_id, 8), /* Some */[length_8_id]);
+
+eq("TAKE", Bs_List.takeOpt(length_10_id, 0), /* Some */[/* [] */0]);
+
+eq("DROP", Bs_List.dropOpt(length_10_id, 10), /* Some */[/* [] */0]);
+
+eq("DROP", Bs_List.dropOpt(length_10_id, 8), /* Some */[/* :: */[
+        8,
+        /* :: */[
+          9,
+          /* [] */0
+        ]
+      ]]);
+
+eq("DROP", Bs_List.dropOpt(length_10_id, 0), /* Some */[length_10_id]);
+
+var a = Bs_List.init(5, id);
+
+eq("SPLIT", Bs_List.splitAtOpt(a, 6), /* None */0);
+
+eq("SPLIT", Bs_List.splitAtOpt(a, 5), /* Some */[/* tuple */[
+        a,
+        /* [] */0
+      ]]);
+
+eq("SPLIT", Bs_List.splitAtOpt(a, 4), /* Some */[/* tuple */[
+        /* :: */[
+          0,
+          /* :: */[
+            1,
+            /* :: */[
+              2,
+              /* :: */[
+                3,
+                /* [] */0
+              ]
+            ]
+          ]
+        ],
+        /* :: */[
+          4,
+          /* [] */0
+        ]
+      ]]);
+
+eq("SPLIT", Bs_List.splitAtOpt(a, 3), /* Some */[/* tuple */[
+        /* :: */[
+          0,
+          /* :: */[
+            1,
+            /* :: */[
+              2,
+              /* [] */0
+            ]
+          ]
+        ],
+        /* :: */[
+          3,
+          /* :: */[
+            4,
+            /* [] */0
+          ]
+        ]
+      ]]);
+
+eq("SPLIT", Bs_List.splitAtOpt(a, 2), /* Some */[/* tuple */[
+        /* :: */[
+          0,
+          /* :: */[
+            1,
+            /* [] */0
+          ]
+        ],
+        /* :: */[
+          2,
+          /* :: */[
+            3,
+            /* :: */[
+              4,
+              /* [] */0
+            ]
+          ]
+        ]
+      ]]);
+
+eq("SPLIT", Bs_List.splitAtOpt(a, 1), /* Some */[/* tuple */[
+        /* :: */[
+          0,
+          /* [] */0
+        ],
+        /* :: */[
+          1,
+          /* :: */[
+            2,
+            /* :: */[
+              3,
+              /* :: */[
+                4,
+                /* [] */0
+              ]
+            ]
+          ]
+        ]
+      ]]);
+
+eq("SPLIT", Bs_List.splitAtOpt(a, 0), /* Some */[/* tuple */[
+        /* [] */0,
+        a
+      ]]);
+
+eq("SPLIT", Bs_List.splitAtOpt(a, -1), /* None */0);
+
 Mt.from_pair_suites("bs_link_list_test.ml", suites[0]);
 
 var N = 0;
 
 var A = 0;
 
-exports.suites  = suites;
-exports.test_id = test_id;
-exports.eq      = eq;
-exports.b       = b;
-exports.N       = N;
-exports.A       = A;
-exports.mod2    = mod2;
-exports.id      = id;
-exports.add     = add;
+exports.suites       = suites;
+exports.test_id      = test_id;
+exports.eq           = eq;
+exports.b            = b;
+exports.N            = N;
+exports.A            = A;
+exports.mod2         = mod2;
+exports.id           = id;
+exports.add          = add;
+exports.length_10_id = length_10_id;
+exports.length_8_id  = length_8_id;
 /* u Not a pure module */

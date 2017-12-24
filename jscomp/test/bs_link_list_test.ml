@@ -68,10 +68,10 @@ let () =
   =~ ([], [2;2;2;4])
 
 let () =   
-  let (=~) = eq "SPLIT" in 
-  N.split [] =~ ([],[]) ; 
-  N.split [1,2] =~ ([1] ,[2]);
-  N.split [1,2;3,4] =~ ([1;3], [2;4])
+  let (=~) = eq "UNZIP" in 
+  N.unzip [] =~ ([],[]) ; 
+  N.unzip [1,2] =~ ([1] ,[2]);
+  N.unzip [1,2;3,4] =~ ([1;3], [2;4])
 
 let () = 
   let (=~) = eq "FILTER" in 
@@ -88,16 +88,45 @@ let () =
   N.map [] id  =~ [];
   N.map [1] (fun [@bs] x-> -x)  =~ [-1]
 let add = (fun [@bs] a b -> a + b)
+let length_10_id = N.init 10 id  
+let length_8_id = N.init 8 id 
 let () = 
-  let (=~) = eq "MAP2" in 
-  let a = N.init 10 id  in 
-  let b = N.init 10 id in
-  let c = N.init 8 id  in 
+  let (=~) = eq "MAP2" in   
+  let b = length_10_id in
+  let c = length_8_id in 
   let d = N.init 10 (fun [@bs] x -> 2 * x ) in     
-  N.map2 add a b =~ d ;
+  N.map2 add length_10_id b =~ d ;
   N.map2 add [] [1] =~ [];
   N.map2 add [1] [] =~ [];
   N.map2 add [] [] =~ [];
-  N.map2 add a b =~  N.(append (map c (fun[@bs] x -> x * 2)) [16;18])
+  N.map2 add length_10_id b =~  N.(append (map c (fun[@bs] x -> x * 2)) [16;18])
+
+let () =   
+  let (=~) = eq "TAKE" in 
+  N.takeOpt [1;2;3] 2 =~ Some [1;2];
+  N.takeOpt [] 1 =~ None;
+  N.takeOpt [1;2] 3 =~ None ; 
+  N.takeOpt [1;2] 2 =~ Some [1;2];
+  N.takeOpt length_10_id 8 =~ Some length_8_id ;
+  N.takeOpt length_10_id 0 =~ Some []
+
+let () =   
+  let (=~) = eq "DROP" in 
+  N.dropOpt length_10_id 10 =~ Some [];
+  N.dropOpt length_10_id 8 =~ Some [8;9];
+  N.dropOpt length_10_id 0 =~ Some length_10_id 
+
+let () = 
+  let (=~) = eq "SPLIT" in 
+  let a = N.init 5 id in 
+  N.splitAtOpt a 6 =~ None;
+  N.splitAtOpt a 5 =~ Some (a,[]);
+  N.splitAtOpt a 4 =~ Some ([0;1;2;3],[4]);
+  N.splitAtOpt a 3 =~ Some ([0;1;2],[3;4]);
+  N.splitAtOpt a 2 =~ Some ([0;1],[2;3;4]);
+  N.splitAtOpt a 1 =~ Some ([0],[1;2;3;4]);
+  N.splitAtOpt a 0 =~ Some ([],a);
+  N.splitAtOpt a (-1) =~ None;
+  
 
 ;; Mt.from_pair_suites __FILE__ !suites
