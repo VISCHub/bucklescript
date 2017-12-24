@@ -42,9 +42,9 @@ val append : 'a t -> 'a t -> 'a t
 
 val map : 'a t -> ('a -> 'b [@bs]) -> 'b t
 
-val map2 : ('a -> 'b -> 'c [@bs]) -> 'a t -> 'b t -> 'c t
+val map2 : 'a t -> 'b t ->  ('a -> 'b -> 'c [@bs]) -> 'c t
 
-val mapi : (int -> 'a -> 'b [@bs]) -> 'a t -> 'b t
+val mapi : 'a t ->  (int -> 'a -> 'b [@bs]) -> 'b t
 
 val init : int -> (int -> 'a [@bs]) -> 'a t
 
@@ -59,56 +59,58 @@ val rev : 'a t -> 'a t
 
 val flatten : 'a t t -> 'a t
 
-val mapRev : ('a -> 'b [@bs]) -> 'a t -> 'b t
+val mapRev : 'a t -> ('a -> 'b [@bs]) -> 'b t
 
-val iter : ('a -> 'b [@bs]) -> 'a t -> unit
+val iter : 'a t ->  ('a -> 'b [@bs]) -> unit
 
-val iteri : (int -> 'a -> 'b [@bs]) -> 'a t -> unit
+val iteri : 'a t -> (int -> 'a -> 'b [@bs]) -> unit
 
-val foldLeft : ('a -> 'b -> 'a [@bs]) -> 'a -> 'b t -> 'a
+val foldLeft :  'a t -> 'b ->  ('b -> 'a -> 'b [@bs]) ->'b
 
-val foldRight : ('a -> 'b -> 'b [@bs]) -> 'a t -> 'b -> 'b
+val foldRight : 'a t -> 'b -> ('a -> 'b -> 'b [@bs])  -> 'b
 
-val mapRev2 : ('a -> 'b -> 'c [@bs]) -> 'a t -> 'b t -> 'd t
+val mapRev2 : 'a t -> 'b t -> ('a -> 'b -> 'c [@bs]) ->  'd t
 
-val iter2 : ('a -> 'b -> 'c [@bs]) -> 'a t -> 'b t -> unit
+val iter2 : 'a t -> 'b t ->  ('a -> 'b -> 'c [@bs]) -> unit
 
 val foldLeft2 :
-  ('a -> 'b -> 'c -> 'a [@bs]) -> 'a -> 'b t -> 'c t -> 'a
+  'b t -> 'c t  -> 'a  -> ('a -> 'b -> 'c -> 'a [@bs]) ->  'a
 
 val foldRight2 :
-  ('a -> 'b -> 'c -> 'c [@bs]) -> 'a t -> 'b t -> 'c -> 'c
+  'a t -> 'b t -> 'c -> ('a -> 'b -> 'c -> 'c [@bs]) ->  'c
 
-val forAll : ('a -> bool [@bs]) -> 'a t -> bool
+val forAll : 'a t -> ('a -> bool [@bs]) ->  bool
 
-val exists : ('a -> bool [@bs]) -> 'a t -> bool
+val exists : 'a t -> ('a -> bool [@bs]) -> bool
 
-val forAll2 : ('a -> 'b -> bool [@bs]) -> 'a t -> 'b t -> bool
+val forAll2 : 'a t -> 'b t -> ('a -> 'b -> bool [@bs]) -> bool
 
-val exists2 : ('a -> 'b -> bool [@bs]) -> 'a t -> 'b t -> bool
+val exists2 :  'a t -> 'b t -> ('a -> 'b -> bool [@bs]) -> bool
 
-val mem : ('a -> 'b -> bool [@bs]) -> 'b -> 'a t -> bool
+val mem :  'a t -> 'b ->  ('a -> 'b -> bool [@bs]) -> bool
 
-val memq : 'a -> 'a t -> bool
+val memq :  'a t -> 'a ->bool
 
-val assocOpt : ('a -> 'b -> bool [@bs]) -> 'b -> ('a * 'c) t -> 'c option
+val assocOpt : ('a * 'c) t -> 'b ->  ('a -> 'b -> bool [@bs])  -> 'c option
 
-val assqOpt : 'a -> ('a * 'b) t -> 'b option
+val assqOpt : ('a * 'b) t -> 'a ->  'b option
 
-val memAssoc : ('a -> 'b -> bool [@bs]) -> 'b -> ('a * 'c) t -> bool
+val memAssoc : ('a * 'c) t -> 'b -> ('a -> 'b -> bool [@bs]) -> bool
 
-val memAssq : 'a -> ('a * 'b) t -> bool
+val memAssq : ('a * 'b) t -> 'a -> bool
 
 val removeAssoc :
-  ('a -> 'b -> bool [@bs]) -> 'b -> ('a * 'c) t -> ('a * 'c) t
+  ('a * 'c) t ->
+  'b -> 
+  ('a -> 'b -> bool [@bs]) -> ('a * 'c) t
 
-val removeAssq : 'a -> ('a * 'b) t -> ('a * 'b) t
+val removeAssq :  ('a * 'b) t -> 'a -> ('a * 'b) t
 
-val findOpt : ('a -> bool [@bs]) -> 'a t -> 'a option
+val findOpt : 'a t -> ('a -> bool [@bs]) ->  'a option
 
-val filter : ('a -> bool [@bs]) -> 'a t -> 'a t
+val filter : 'a t ->  ('a -> bool [@bs]) -> 'a t
 
-val partition : ('a -> bool [@bs]) -> 'a t -> 'a t * 'a t
+val partition : 'a t -> ('a -> bool [@bs]) ->  'a t * 'a t
 
 val unzip : ('a * 'b) t -> 'a t * 'b t
 

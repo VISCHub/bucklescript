@@ -150,7 +150,7 @@ let rec copyAuxCont cellX prec =
 let rec copyAuxWitFilter f cellX prec =
   match cellX with
   | [] -> 
-    unsafeMutateTail prec []
+    ()
   | h::t ->
     if f h [@bs] then 
       begin 
@@ -186,16 +186,16 @@ let rec copyAuxWithMap2 f cellX cellY prec =
     unsafeMutateTail prec next ; 
     copyAuxWithMap2 f t1 t2 next
   | [],_ | _,[] -> 
-    unsafeMutateTail prec []
+    ()
 
 let rec copyAuxWithMapI f i cellX prec =
   match cellX with
-  | [] -> 
-    unsafeMutateTail prec []
   | h::t ->
     let next = mutableCell (f i h [@bs]) [] in
     unsafeMutateTail prec next ; 
     copyAuxWithMapI f (i + 1) t next
+  | [] -> 
+    ()
 
 let rec takeAux n cell prec = 
   if n = 0 then true
@@ -272,7 +272,8 @@ let map xs f =
     let cell = mutableCell (f h [@bs]) [] in
     copyAuxWithMap f t cell;
     cell
-let rec map2 f l1 l2 =
+
+let map2 l1 l2 f =
   match (l1, l2) with
   | (a1::l1, a2::l2) -> 
     let cell = mutableCell (f a1 a2 [@bs]) []  in
@@ -280,7 +281,8 @@ let rec map2 f l1 l2 =
     cell 
   | [], _ | _, [] -> []
 
-let rec mapi  f = function
+let rec mapi  xs f  = 
+  match xs with 
     [] -> []
   | h::t -> 
     let cell = mutableCell (f 0 h [@bs]) [] in 
@@ -358,29 +360,31 @@ let rec mapRevAux f accu xs =
   | [] -> accu
   | a::l -> mapRevAux f (f a [@bs] :: accu) l
 
-let mapRev f l =
+let mapRev l f  =
   mapRevAux f [] l
 
 
-let rec iter f = function
+let rec iter xs f  = 
+  match xs with 
     [] -> ()
-  | a::l -> f a [@bs]; iter f l
+  | a::l -> f a [@bs]; iter l f 
 
-let rec iteri i f = function
+let rec iteri xs i f  = 
+  match xs with 
     [] -> ()
-  | a::l -> f i a [@bs]; iteri (i + 1) f l
+  | a::l -> f i a [@bs]; iteri l (i + 1) f 
 
-let iteri f l = iteri 0 f l
+let iteri l f  = iteri l 0 f 
 
-let rec foldLeft f accu l =
+let rec foldLeft l accu f   =
   match l with
     [] -> accu
-  | a::l -> foldLeft f (f accu a [@bs]) l
+  | a::l -> foldLeft l (f accu a [@bs]) f 
 
-let rec foldRight f l accu =
+let rec foldRight l accu f  =
   match l with
     [] -> accu
-  | a::l -> f a (foldRight f l accu) [@bs]
+  | a::l -> f a (foldRight l accu f) [@bs]
 
 
 let rec mapRevAux2 f accu l1 l2 =
@@ -388,84 +392,104 @@ let rec mapRevAux2 f accu l1 l2 =
   | (a1::l1, a2::l2) -> mapRevAux2  f (f a1 a2 [@bs]:: accu) l1 l2
   | (_, _) -> []
 
-let mapRev2 f l1 l2 =
+let mapRev2 l1 l2 f =
   mapRevAux2 f [] l1 l2
 
-let rec iter2 f l1 l2 =
+let rec iter2  l1 l2 f =
   match (l1, l2) with
-  | (a1::l1, a2::l2) -> f a1 a2 [@bs]; iter2 f l1 l2
+  | (a1::l1, a2::l2) -> f a1 a2 [@bs]; iter2  l1 l2 f
   | [],_ | _, [] -> ()
 
-let rec foldLeft2 f accu l1 l2 =
+let rec foldLeft2 l1 l2 accu f =
   match (l1, l2) with
-  | (a1::l1, a2::l2) -> foldLeft2 f (f accu a1 a2 [@bs]) l1 l2
+  | (a1::l1, a2::l2) -> 
+    foldLeft2 l1 l2 (f accu a1 a2 [@bs]) f 
   | [], _ | _, [] -> accu
 
-let rec foldRight2 f l1 l2 accu =
+let rec foldRight2 l1 l2 accu f  =
   match (l1, l2) with
     ([], []) -> accu
-  | (a1::l1, a2::l2) -> f a1 a2 (foldRight2 f l1 l2 accu) [@bs]
+  | (a1::l1, a2::l2) -> f a1 a2 (foldRight2 l1 l2 accu f) [@bs]
   | _, [] | [], _ -> accu
 
-let rec forAll p = function
+let rec forAll xs p = 
+  match xs with 
     [] -> true
-  | a::l -> p a [@bs] && forAll p l
+  | a::l -> p a [@bs] && forAll l p
 
-let rec exists p = function
+let rec exists xs p = 
+  match xs with 
     [] -> false
-  | a::l -> p a [@bs] || exists p l
+  | a::l -> p a [@bs] || exists l p 
 
-let rec forAll2 p l1 l2 =
+let rec forAll2 l1 l2  p =
   match (l1, l2) with
     (_, []) | [],_ -> true
-  | (a1::l1, a2::l2) -> p a1 a2 [@bs] && forAll2 p l1 l2
+  | (a1::l1, a2::l2) -> p a1 a2 [@bs] && forAll2 l1 l2 p
 
 
-let rec exists2 p l1 l2 =
+let rec exists2 l1 l2 p =
   match (l1, l2) with
     [], _ | _, [] -> false
-  | (a1::l1, a2::l2) -> p a1 a2 [@bs] || exists2 p l1 l2
+  | (a1::l1, a2::l2) -> p a1 a2 [@bs] || exists2 l1 l2 p 
 
 
-let rec mem eq x = function
+let rec mem xs x eq  = 
+  match xs with 
     [] -> false
-  | a::l -> eq a x [@bs] || mem eq x l
+  | a::l -> eq a x [@bs] || mem l x eq 
 
-let rec memq x = function
+let rec memq xs x = 
+  match xs with 
     [] -> false
-  | a::l -> a == x || memq x l
+  | a::l -> a == x || memq l x 
 
-let rec assocOpt eq x = function
+let rec assocOpt  xs x eq = 
+  match xs with 
+  | [] -> None
+  | (a,b)::l -> 
+    if eq a x [@bs] then Some b 
+    else assocOpt l x eq 
+
+let rec assqOpt xs x = 
+  match xs with 
     [] -> None
-  | (a,b)::l -> if eq a x [@bs] then Some b else assocOpt eq x l
+  | (a,b)::l -> if a == x then Some b else assqOpt l x 
 
-let rec assqOpt x = function
-    [] -> None
-  | (a,b)::l -> if a == x then Some b else assqOpt x l
-
-let rec memAssoc eq x = function
+let rec memAssoc xs x eq = 
+  match xs with 
   | [] -> false
-  | (a, b) :: l -> eq a x [@bs] || memAssoc eq x l
+  | (a, b) :: l -> eq a x [@bs] || memAssoc l x eq 
 
-let rec memAssq x = function
+let rec memAssq xs x  = 
+  match xs with 
   | [] -> false
-  | (a, b) :: l -> a == x || memAssq x l
+  | (a, b) :: l -> a == x || memAssq l x 
 
-let rec removeAssoc eq x = function
+(*FIXME non-stack-safe *)  
+let rec removeAssoc xs x eq  = 
+  match xs with 
   | [] -> []
   | (a, b as pair) :: l ->
-    if eq a x [@bs] then l else pair :: removeAssoc eq x l
+    if eq a x [@bs] then l 
+    else pair :: removeAssoc l x eq 
 
-let rec removeAssq x = function
+let rec removeAssq xs x = 
+  match xs with 
   | [] -> []
-  | (a, b as pair) :: l -> if a == x then l else pair :: removeAssq x l
+  | (a, b as pair) :: l -> 
+    if a == x then l 
+    else pair :: removeAssq l x
 
-let rec findOpt p = function
+let rec findOpt xs p = 
+  match xs with 
   | [] -> None
-  | x :: l -> if p x [@bs] then Some x else findOpt p l
+  | x :: l -> 
+    if p x [@bs] then Some x
+    else findOpt l p 
 
 
-let rec filter p xs = 
+let rec filter xs p  = 
   match xs with 
   | [] -> []
   | h::t -> 
@@ -476,10 +500,10 @@ let rec filter p xs =
         cell 
       end
     else 
-      filter p t 
+      filter t p 
 
 
-let partition p l =    
+let partition l p  =    
   match l with 
   | [] -> [],[]
   | h::t -> 

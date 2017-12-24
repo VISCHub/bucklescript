@@ -72,7 +72,7 @@ eq("File \"bs_link_list_test.ml\", line 27, characters 5-12", Bs_List.map(u, (fu
       ]
     ]);
 
-eq("File \"bs_link_list_test.ml\", line 30, characters 5-12", Bs_List.flatten(/* :: */[
+eq("FLATTEN", Bs_List.flatten(/* :: */[
           /* :: */[
             1,
             /* [] */0
@@ -121,7 +121,47 @@ eq("File \"bs_link_list_test.ml\", line 30, characters 5-12", Bs_List.flatten(/*
       ]
     ]);
 
-eq("File \"bs_link_list_test.ml\", line 37, characters 5-12", Bs_List.toArray(Bs_List.append(Bs_List.init(100, (function (i) {
+eq("FLATTEN", Bs_List.flatten(/* [] */0), /* [] */0);
+
+eq("FLATTEN", Bs_List.flatten(/* :: */[
+          /* [] */0,
+          /* :: */[
+            /* [] */0,
+            /* :: */[
+              /* :: */[
+                2,
+                /* [] */0
+              ],
+              /* :: */[
+                /* :: */[
+                  1,
+                  /* [] */0
+                ],
+                /* :: */[
+                  /* :: */[
+                    2,
+                    /* [] */0
+                  ],
+                  /* :: */[
+                    /* [] */0,
+                    /* [] */0
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]), /* :: */[
+      2,
+      /* :: */[
+        1,
+        /* :: */[
+          2,
+          /* [] */0
+        ]
+      ]
+    ]);
+
+eq("File \"bs_link_list_test.ml\", line 41, characters 5-12", Bs_List.toArray(Bs_List.append(Bs_List.init(100, (function (i) {
                     return i;
                   })), Bs_List.init(100, (function (i) {
                     return i;
@@ -130,6 +170,22 @@ eq("File \"bs_link_list_test.ml\", line 37, characters 5-12", Bs_List.toArray(Bs
               })), Bs_Array.init(100, (function (i) {
                 return i;
               }))));
+
+eq("APPEND", Bs_List.append(/* :: */[
+          1,
+          /* [] */0
+        ], /* [] */0), /* :: */[
+      1,
+      /* [] */0
+    ]);
+
+eq("APPEND", Bs_List.append(/* [] */0, /* :: */[
+          1,
+          /* [] */0
+        ]), /* :: */[
+      1,
+      /* [] */0
+    ]);
 
 eq("ZIP", Bs_List.zip(/* :: */[
           1,
@@ -220,7 +276,7 @@ function mod2(x) {
   return +(x % 2 === 0);
 }
 
-eq("PARTITION", Bs_List.partition(mod2, /* :: */[
+eq("PARTITION", Bs_List.partition(/* :: */[
           1,
           /* :: */[
             2,
@@ -238,7 +294,7 @@ eq("PARTITION", Bs_List.partition(mod2, /* :: */[
               ]
             ]
           ]
-        ]), /* tuple */[
+        ], mod2), /* tuple */[
       /* :: */[
         2,
         /* :: */[
@@ -261,7 +317,7 @@ eq("PARTITION", Bs_List.partition(mod2, /* :: */[
       ]
     ]);
 
-eq("PARTITION", Bs_List.partition(mod2, /* :: */[
+eq("PARTITION", Bs_List.partition(/* :: */[
           2,
           /* :: */[
             2,
@@ -273,7 +329,7 @@ eq("PARTITION", Bs_List.partition(mod2, /* :: */[
               ]
             ]
           ]
-        ]), /* tuple */[
+        ], mod2), /* tuple */[
       /* :: */[
         2,
         /* :: */[
@@ -290,9 +346,7 @@ eq("PARTITION", Bs_List.partition(mod2, /* :: */[
       /* [] */0
     ]);
 
-eq("PARTITION", Bs_List.partition((function (x) {
-            return 1 - mod2(x);
-          }), /* :: */[
+eq("PARTITION", Bs_List.partition(/* :: */[
           2,
           /* :: */[
             2,
@@ -304,7 +358,9 @@ eq("PARTITION", Bs_List.partition((function (x) {
               ]
             ]
           ]
-        ]), /* tuple */[
+        ], (function (x) {
+            return 1 - mod2(x);
+          })), /* tuple */[
       /* [] */0,
       /* :: */[
         2,
@@ -372,7 +428,7 @@ eq("UNZIP", Bs_List.unzip(/* :: */[
       ]
     ]);
 
-eq("FILTER", Bs_List.filter(mod2, /* :: */[
+eq("FILTER", Bs_List.filter(/* :: */[
           1,
           /* :: */[
             2,
@@ -384,7 +440,7 @@ eq("FILTER", Bs_List.filter(mod2, /* :: */[
               ]
             ]
           ]
-        ]), /* :: */[
+        ], mod2), /* :: */[
       2,
       /* :: */[
         4,
@@ -392,7 +448,7 @@ eq("FILTER", Bs_List.filter(mod2, /* :: */[
       ]
     ]);
 
-eq("FILTER", Bs_List.filter(mod2, /* :: */[
+eq("FILTER", Bs_List.filter(/* :: */[
           1,
           /* :: */[
             3,
@@ -401,11 +457,11 @@ eq("FILTER", Bs_List.filter(mod2, /* :: */[
               /* [] */0
             ]
           ]
-        ]), /* [] */0);
+        ], mod2), /* [] */0);
 
-eq("FILTER", Bs_List.filter(mod2, /* [] */0), /* [] */0);
+eq("FILTER", Bs_List.filter(/* [] */0, mod2), /* [] */0);
 
-eq("FILTER", Bs_List.filter(mod2, /* :: */[
+eq("FILTER", Bs_List.filter(/* :: */[
           2,
           /* :: */[
             2,
@@ -420,7 +476,7 @@ eq("FILTER", Bs_List.filter(mod2, /* :: */[
               ]
             ]
           ]
-        ]), /* :: */[
+        ], mod2), /* :: */[
       2,
       /* :: */[
         2,
@@ -484,21 +540,21 @@ var d = Bs_List.init(10, (function (x) {
         return (x << 1);
       }));
 
-eq("MAP2", Bs_List.map2(add, length_10_id, length_10_id), d);
+eq("MAP2", Bs_List.map2(length_10_id, length_10_id, add), d);
 
-eq("MAP2", Bs_List.map2(add, /* [] */0, /* :: */[
+eq("MAP2", Bs_List.map2(/* [] */0, /* :: */[
           1,
           /* [] */0
-        ]), /* [] */0);
+        ], add), /* [] */0);
 
-eq("MAP2", Bs_List.map2(add, /* :: */[
+eq("MAP2", Bs_List.map2(/* :: */[
           1,
           /* [] */0
-        ], /* [] */0), /* [] */0);
+        ], /* [] */0, add), /* [] */0);
 
-eq("MAP2", Bs_List.map2(add, /* [] */0, /* [] */0), /* [] */0);
+eq("MAP2", Bs_List.map2(/* [] */0, /* [] */0, add), /* [] */0);
 
-eq("MAP2", Bs_List.map2(add, length_10_id, length_10_id), Bs_List.append(Bs_List.map(length_8_id, (function (x) {
+eq("MAP2", Bs_List.map2(length_10_id, length_10_id, add), Bs_List.append(Bs_List.map(length_8_id, (function (x) {
                 return (x << 1);
               })), /* :: */[
           16,
@@ -507,6 +563,10 @@ eq("MAP2", Bs_List.map2(add, length_10_id, length_10_id), Bs_List.append(Bs_List
             /* [] */0
           ]
         ]));
+
+eq("MAP2", Bs_List.map2(length_10_id, length_8_id, add), Bs_List.mapi(length_8_id, (function (i, x) {
+            return i + x | 0;
+          })));
 
 eq("TAKE", Bs_List.takeOpt(/* :: */[
           1,
@@ -553,6 +613,8 @@ eq("TAKE", Bs_List.takeOpt(length_10_id, 8), /* Some */[length_8_id]);
 
 eq("TAKE", Bs_List.takeOpt(length_10_id, 0), /* Some */[/* [] */0]);
 
+eq("TAKE", Bs_List.takeOpt(length_8_id, -2), /* None */0);
+
 eq("DROP", Bs_List.dropOpt(length_10_id, 10), /* Some */[/* [] */0]);
 
 eq("DROP", Bs_List.dropOpt(length_10_id, 8), /* Some */[/* :: */[
@@ -565,7 +627,11 @@ eq("DROP", Bs_List.dropOpt(length_10_id, 8), /* Some */[/* :: */[
 
 eq("DROP", Bs_List.dropOpt(length_10_id, 0), /* Some */[length_10_id]);
 
+eq("DROP", Bs_List.dropOpt(length_8_id, -1), /* None */0);
+
 var a = Bs_List.init(5, id);
+
+eq("SPLIT", Bs_List.splitAtOpt(/* [] */0, 1), /* None */0);
 
 eq("SPLIT", Bs_List.splitAtOpt(a, 6), /* None */0);
 
@@ -661,6 +727,42 @@ eq("SPLIT", Bs_List.splitAtOpt(a, 0), /* Some */[/* tuple */[
 
 eq("SPLIT", Bs_List.splitAtOpt(a, -1), /* None */0);
 
+function succx(x) {
+  return x + 1 | 0;
+}
+
+eq("File \"bs_link_list_test.ml\", line 146, characters 5-12", /* tuple */[
+      Bs_List.headOpt(length_10_id),
+      Bs_List.tailOpt(length_10_id)
+    ], /* tuple */[
+      /* Some */[0],
+      Bs_List.dropOpt(length_10_id, 1)
+    ]);
+
+eq("File \"bs_link_list_test.ml\", line 147, characters 5-12", Bs_List.headOpt(/* [] */0), /* None */0);
+
+Bs_List.iteri(length_10_id, (function (i, x) {
+        return eq("File \"bs_link_list_test.ml\", line 149, characters 8-15", Bs_List.nthOpt(length_10_id, i), /* Some */[x]);
+      }));
+
+eq("File \"bs_link_list_test.ml\", line 150, characters 5-12", Bs_List.nthOpt(length_10_id, -1), /* None */0);
+
+eq("File \"bs_link_list_test.ml\", line 151, characters 5-12", Bs_List.nthOpt(length_10_id, 12), /* None */0);
+
+eq("File \"bs_link_list_test.ml\", line 152, characters 5-12", Bs_List.init(0, id), /* [] */0);
+
+eq("File \"bs_link_list_test.ml\", line 153, characters 5-12", Bs_List.rev(Bs_List.rev(length_10_id)), length_10_id);
+
+eq("File \"bs_link_list_test.ml\", line 154, characters 5-12", Bs_List.rev(Bs_List.rev(length_8_id)), length_8_id);
+
+eq("File \"bs_link_list_test.ml\", line 155, characters 5-12", Bs_List.rev(/* [] */0), /* [] */0);
+
+eq("File \"bs_link_list_test.ml\", line 156, characters 5-12", Bs_List.rev(Bs_List.mapRev(length_10_id, succx)), Bs_List.map(length_10_id, succx));
+
+eq("File \"bs_link_list_test.ml\", line 159, characters 5-12", Bs_List.foldLeft(length_10_id, 0, add), 45);
+
+eq("File \"bs_link_list_test.ml\", line 161, characters 5-12", Bs_List.foldRight(length_10_id, 0, add), 45);
+
 Mt.from_pair_suites("bs_link_list_test.ml", suites[0]);
 
 var N = 0;
@@ -678,4 +780,5 @@ exports.id           = id;
 exports.add          = add;
 exports.length_10_id = length_10_id;
 exports.length_8_id  = length_8_id;
+exports.succx        = succx;
 /* u Not a pure module */
