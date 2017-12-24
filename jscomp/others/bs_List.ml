@@ -42,6 +42,8 @@ external mutableCell :
   'a -> 'a t ->  'a t = "#makemutablelist"
 external unsafeMutateTail : 
   'a t -> 'a t -> unit = "#setfield1"    
+external unsafeTail :   
+  'a t -> 'a t = "%field1"
 (*
    [mutableCell x] == [x]
    but tell the compiler that is a mutable cell, so it wont
@@ -77,6 +79,29 @@ let nthAssert x n =
   if n < 0 then [%assert "nthAssert"]
   else nthAuxAssert x n 
 
+(* [precX] or [precY] can be empty 
+   in that case, the address may change, so we need 
+   return some value 
+*)  
+let rec partitionAux p cell precX precY =
+  match cell with
+  | [] -> ()
+  | h::t ->
+    let next = mutableCell h [] in
+    if p h [@bs] then     
+      begin 
+        unsafeMutateTail precX next ;
+        partitionAux p t next precY
+      end 
+    else 
+      begin 
+        unsafeMutateTail precY next ;
+        partitionAux p t precX next 
+      end 
+
+
+
+
 (* return the tail *)  
 let rec copyAux cellX prec =
   match cellX with
@@ -84,10 +109,23 @@ let rec copyAux cellX prec =
   | h::t ->
     let next = mutableCell h [] in
     (* here the mutable is mostly to telling compilers
-      dont inline [next], it is mutable
+       dont inline [next], it is mutable
     *)
     unsafeMutateTail prec next ; 
     copyAux t next
+
+let rec copyAuxWitFilter f cellX prec =
+  match cellX with
+  | [] -> 
+    unsafeMutateTail prec []
+  | h::t ->
+    if f h [@bs] then 
+      begin 
+        let next = mutableCell h [] in
+        unsafeMutateTail prec next ; 
+        copyAuxWitFilter f t next
+      end
+    else copyAuxWitFilter f t prec 
 
 let rec copyAuxWithMap f cellX prec =
   match cellX with
@@ -98,6 +136,16 @@ let rec copyAuxWithMap f cellX prec =
     unsafeMutateTail prec next ; 
     copyAuxWithMap f t next
 
+
+let rec copyAuxWithMap2 f cellX cellY prec =
+  match cellX, cellY with
+  | h1::t1, h2::t2 -> 
+    let next = mutableCell (f h1 h2 [@bs]) [] in
+    unsafeMutateTail prec next ; 
+    copyAuxWithMap2 f t1 t2 next
+  | [],_ | _,[] -> 
+    unsafeMutateTail prec []
+
 let rec copyAuxWithMapI f i cellX prec =
   match cellX with
   | [] -> 
@@ -106,7 +154,7 @@ let rec copyAuxWithMapI f i cellX prec =
     let next = mutableCell (f i h [@bs]) [] in
     unsafeMutateTail prec next ; 
     copyAuxWithMapI f (i + 1) t next
-    
+
 let append xs ys =
   match xs with
   | [] -> ys
@@ -122,7 +170,13 @@ let map xs f =
     let cell = mutableCell (f h [@bs]) [] in
     copyAuxWithMap f t cell;
     cell
-
+let rec map2 f l1 l2 =
+  match (l1, l2) with
+  | (a1::l1, a2::l2) -> 
+    let cell = mutableCell (f a1 a2 [@bs]) []  in
+    copyAuxWithMap2 f l1 l2 cell; 
+    cell 
+  | [], _ | _, [] -> []
 
 let rec mapi  f = function
     [] -> []
@@ -183,7 +237,7 @@ let rec flattenAux prec xs =
   match xs with
   | [] -> unsafeMutateTail prec [] 
   | h::r -> flattenAux (copyAux h prec) r
-  
+
 
 let rec flatten xs =     
   match xs with 
@@ -197,15 +251,14 @@ let rec flatten xs =
 
 
 
+let rec mapRevAux f accu xs = 
+  match xs with 
+  | [] -> accu
+  | a::l -> mapRevAux f (f a [@bs] :: accu) l
 
+let mapRev f l =
+  mapRevAux f [] l
 
-let rev_map f l =
-  let rec rmap_f accu = function
-    | [] -> accu
-    | a::l -> rmap_f (f a [@bs] :: accu) l
-  in
-  rmap_f [] l
-;;
 
 let rec iter f = function
     [] -> ()
@@ -217,69 +270,60 @@ let rec iteri i f = function
 
 let iteri f l = iteri 0 f l
 
-let rec fold_left f accu l =
+let rec foldLeft f accu l =
   match l with
     [] -> accu
-  | a::l -> fold_left f (f accu a [@bs]) l
+  | a::l -> foldLeft f (f accu a [@bs]) l
 
-let rec fold_right f l accu =
+let rec foldRight f l accu =
   match l with
     [] -> accu
-  | a::l -> f a (fold_right f l accu) [@bs]
+  | a::l -> f a (foldRight f l accu) [@bs]
 
-let rec map2 f l1 l2 =
-  match (l1, l2) with
-    ([], []) -> []
-  | (a1::l1, a2::l2) -> let r = f a1 a2 [@bs] in r :: map2 f l1 l2
-  | (_, _) -> [%assert "List.map2"]
 
-let rev_map2 f l1 l2 =
-  let rec rmap2_f accu l1 l2 =
-    match (l1, l2) with
-    | ([], []) -> accu
-    | (a1::l1, a2::l2) -> rmap2_f (f a1 a2 [@bs]:: accu) l1 l2
-    | (_, _) -> [%assert "List.rev_map2"]
-  in
-  rmap2_f [] l1 l2
-;;
+let rec mapRevAux2 f accu l1 l2 =
+  match (l1, l2) with  
+  | (a1::l1, a2::l2) -> mapRevAux2  f (f a1 a2 [@bs]:: accu) l1 l2
+  | (_, _) -> []
+
+let mapRev2 f l1 l2 =
+  mapRevAux2 f [] l1 l2
 
 let rec iter2 f l1 l2 =
   match (l1, l2) with
-    ([], []) -> ()
   | (a1::l1, a2::l2) -> f a1 a2 [@bs]; iter2 f l1 l2
-  | (_, _) -> [%assert "List.iter2"]
+  | [],_ | _, [] -> ()
 
-let rec fold_left2 f accu l1 l2 =
+let rec foldLeft2 f accu l1 l2 =
+  match (l1, l2) with
+  | (a1::l1, a2::l2) -> foldLeft2 f (f accu a1 a2 [@bs]) l1 l2
+  | [], _ | _, [] -> accu
+
+let rec foldRight2 f l1 l2 accu =
   match (l1, l2) with
     ([], []) -> accu
-  | (a1::l1, a2::l2) -> fold_left2 f (f accu a1 a2 [@bs]) l1 l2
-  | (_, _) -> [%assert "List.fold_left2"]
+  | (a1::l1, a2::l2) -> f a1 a2 (foldRight2 f l1 l2 accu) [@bs]
+  | _, [] | [], _ -> accu
 
-let rec fold_right2 f l1 l2 accu =
-  match (l1, l2) with
-    ([], []) -> accu
-  | (a1::l1, a2::l2) -> f a1 a2 (fold_right2 f l1 l2 accu) [@bs]
-  | (_, _) -> [%assert "List.fold_right2"]
-
-let rec for_all p = function
+let rec forAll p = function
     [] -> true
-  | a::l -> p a [@bs] && for_all p l
+  | a::l -> p a [@bs] && forAll p l
 
 let rec exists p = function
     [] -> false
   | a::l -> p a [@bs] || exists p l
 
-let rec for_all2 p l1 l2 =
+let rec forAll2 p l1 l2 =
   match (l1, l2) with
-    ([], []) -> true
-  | (a1::l1, a2::l2) -> p a1 a2 [@bs] && for_all2 p l1 l2
-  | (_, _) -> [%assert "List.for_all2"]
+    (_, []) | [],_ -> true
+  | (a1::l1, a2::l2) -> p a1 a2 [@bs] && forAll2 p l1 l2
+
 
 let rec exists2 p l1 l2 =
   match (l1, l2) with
-    ([], []) -> false
+    [], _ | _, [] -> false
   | (a1::l1, a2::l2) -> p a1 a2 [@bs] || exists2 p l1 l2
-  | (_, _) -> [%assert "List.exists2"]
+
 
 let rec mem eq x = function
     [] -> false
@@ -289,48 +333,63 @@ let rec memq x = function
     [] -> false
   | a::l -> a == x || memq x l
 
-let rec assoc eq x = function
-    [] -> raise Not_found
-  | (a,b)::l -> if eq a x [@bs] then b else assoc eq x l
+let rec assocOpt eq x = function
+    [] -> None
+  | (a,b)::l -> if eq a x [@bs] then Some b else assocOpt eq x l
 
-let rec assq x = function
-    [] -> raise Not_found
-  | (a,b)::l -> if a == x then b else assq x l
+let rec assqOpt x = function
+    [] -> None
+  | (a,b)::l -> if a == x then Some b else assqOpt x l
 
-let rec mem_assoc eq x = function
+let rec memAssoc eq x = function
   | [] -> false
-  | (a, b) :: l -> eq a x [@bs] || mem_assoc eq x l
+  | (a, b) :: l -> eq a x [@bs] || memAssoc eq x l
 
-let rec mem_assq x = function
+let rec memAssq x = function
   | [] -> false
-  | (a, b) :: l -> a == x || mem_assq x l
+  | (a, b) :: l -> a == x || memAssq x l
 
-let rec remove_assoc eq x = function
+let rec removeAssoc eq x = function
   | [] -> []
   | (a, b as pair) :: l ->
-    if eq a x [@bs] then l else pair :: remove_assoc eq x l
+    if eq a x [@bs] then l else pair :: removeAssoc eq x l
 
-let rec remove_assq x = function
+let rec removeAssq x = function
   | [] -> []
-  | (a, b as pair) :: l -> if a == x then l else pair :: remove_assq x l
+  | (a, b as pair) :: l -> if a == x then l else pair :: removeAssq x l
 
-let rec find p = function
-  | [] -> raise Not_found
-  | x :: l -> if p x [@bs] then x else find p l
+let rec findOpt p = function
+  | [] -> None
+  | x :: l -> if p x [@bs] then Some x else findOpt p l
 
-let find_all p =
-  let rec find accu = function
-    | [] -> rev accu
-    | x :: l -> if p x [@bs] then find (x :: accu) l else find accu l in
-  find []
 
-let filter = find_all
+let rec filter p xs = 
+  match xs with 
+  | [] -> []
+  | h::t -> 
+    if p h [@bs] then 
+      begin 
+        let cell = (mutableCell h []) in 
+        copyAuxWitFilter p t cell ;
+        cell 
+      end
+    else 
+      filter p t 
 
-let partition p l =
-  let rec part yes no = function
-    | [] -> (rev yes, rev no)
-    | x :: l -> if p x [@bs] then part (x :: yes) no l else part yes (x :: no) l in
-  part [] [] l
+
+let partition p l =    
+  match l with 
+  | [] -> [],[]
+  | h::t -> 
+    let nextX = mutableCell h [] in 
+    let nextY = mutableCell h [] in 
+    let b = p h [@bs]  in 
+    partitionAux p t nextX nextY;
+    if b then 
+      nextX, unsafeTail nextY  
+    else       
+      unsafeTail nextX, nextY 
+
 
 let rec split = function
     [] -> ([], [])
