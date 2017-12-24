@@ -137,7 +137,7 @@ let rec splitAux cell precX precY =
     splitAux t nextA nextB
 
 (* return the tail pointer so it can continue copy other 
-  list
+   list
 *)  
 let rec copyAuxCont cellX prec =
   match cellX with
@@ -196,6 +196,66 @@ let rec copyAuxWithMapI f i cellX prec =
     let next = mutableCell (f i h [@bs]) [] in
     unsafeMutateTail prec next ; 
     copyAuxWithMapI f (i + 1) t next
+
+let rec takeAux n cell prec = 
+  if n = 0 then true
+  else 
+    match cell with 
+    | [] -> false 
+    | x::xs -> 
+      let cell = mutableCell x [] in 
+      unsafeMutateTail prec cell; 
+      takeAux (n - 1) xs cell 
+
+let rec splitAtAux n cell prec = 
+  if n = 0 then Some cell 
+  else 
+    match cell with 
+    | [] -> None 
+    | x::xs -> 
+      let cell = mutableCell x [] in 
+      unsafeMutateTail prec cell;  
+      splitAtAux (n - 1) xs cell
+
+(* invarint [n >= 0] *)    
+let  takeOpt lst n = 
+  if n < 0 then None
+  else 
+  if n = 0 then Some []
+  else 
+    match lst with
+    | [] -> None 
+    | x::xs -> 
+      let cell = mutableCell x [] in 
+      let has = takeAux (n-1) xs cell in
+      if has then Some cell
+      else None
+(* invariant [n >= 0 ] *)
+let rec dropAux l n = 
+  if n = 0 then Some l
+  else 
+    match l with 
+    | _::tl ->  dropAux tl (n -1)
+    | [] -> None 
+
+let dropOpt lst n =       
+  if n < 0 then None 
+  else 
+    dropAux lst n 
+
+let splitAtOpt lst n =     
+  if n < 0 then None 
+  else 
+  if n = 0 then Some ([],lst) 
+  else 
+    match lst with 
+    | [] ->  None 
+    | x::xs -> 
+      let cell = mutableCell x [] in 
+      let rest = splitAtAux (n - 1) xs cell in 
+      match rest with 
+      | Some rest -> Some (cell, rest)
+      | None -> None
 
 let append xs ys =
   match xs with
@@ -433,7 +493,7 @@ let partition p l =
       unsafeTail nextX, nextY 
 
 
-let rec split xs = 
+let rec unzip xs = 
   match xs with 
   | [] -> ([], [])
   | (x,y)::l ->
@@ -441,7 +501,7 @@ let rec split xs =
     let cellY = mutableCell y [] in 
     splitAux l cellX cellY ; 
     cellX, cellY
-    
+
 
 let rec zip l1 l2 =
   match (l1, l2) with
@@ -451,4 +511,3 @@ let rec zip l1 l2 =
     zipAux l1 l2 cell; 
     cell
 
-(* TODO: add take/drop*)

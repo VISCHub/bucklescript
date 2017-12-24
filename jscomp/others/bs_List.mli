@@ -24,86 +24,92 @@
 
 type 'a t = 'a list
 
-val headOpt : 'a list -> 'a option
+val headOpt : 'a t -> 'a option
 
-val tailOpt : 'a list -> 'a list option
+val tailOpt : 'a t -> 'a t option
 
-val nthOpt : 'a list -> int -> 'a option
+val nthOpt : 'a t -> int -> 'a option
 
-val nthAssert : 'a list -> int -> 'a
+val nthAssert : 'a t -> int -> 'a
 
-val append : 'a list -> 'a t -> 'a t
+val dropOpt : 'a t -> int -> 'a t option 
 
-val map : 'a list -> ('a -> 'b [@bs]) -> 'b t
+val takeOpt : 'a t -> int -> 'a t option 
 
-val map2 : ('a -> 'b -> 'c [@bs]) -> 'a list -> 'b list -> 'c t
+val splitAtOpt : 'a t -> int -> ('a list * 'a list) option 
 
-val mapi : (int -> 'a -> 'b [@bs]) -> 'a list -> 'b t
+val append : 'a t -> 'a t -> 'a t
+
+val map : 'a t -> ('a -> 'b [@bs]) -> 'b t
+
+val map2 : ('a -> 'b -> 'c [@bs]) -> 'a t -> 'b t -> 'c t
+
+val mapi : (int -> 'a -> 'b [@bs]) -> 'a t -> 'b t
 
 val init : int -> (int -> 'a [@bs]) -> 'a t
 
-val length : 'a list -> int
+val length : 'a t -> int
 
 val toArray : 'a t -> 'a array
 
-val revAppend : 'a list -> 'a list -> 'a list
+val revAppend : 'a t -> 'a t -> 'a t
 
-val rev : 'a list -> 'a list
+val rev : 'a t -> 'a t
 
 
-val flatten : 'a list list -> 'a t
+val flatten : 'a t t -> 'a t
 
-val mapRev : ('a -> 'b [@bs]) -> 'a list -> 'b list
+val mapRev : ('a -> 'b [@bs]) -> 'a t -> 'b t
 
-val iter : ('a -> 'b [@bs]) -> 'a list -> unit
+val iter : ('a -> 'b [@bs]) -> 'a t -> unit
 
-val iteri : (int -> 'a -> 'b [@bs]) -> 'a list -> unit
+val iteri : (int -> 'a -> 'b [@bs]) -> 'a t -> unit
 
-val foldLeft : ('a -> 'b -> 'a [@bs]) -> 'a -> 'b list -> 'a
+val foldLeft : ('a -> 'b -> 'a [@bs]) -> 'a -> 'b t -> 'a
 
-val foldRight : ('a -> 'b -> 'b [@bs]) -> 'a list -> 'b -> 'b
+val foldRight : ('a -> 'b -> 'b [@bs]) -> 'a t -> 'b -> 'b
 
-val mapRev2 : ('a -> 'b -> 'c [@bs]) -> 'a list -> 'b list -> 'd list
+val mapRev2 : ('a -> 'b -> 'c [@bs]) -> 'a t -> 'b t -> 'd t
 
-val iter2 : ('a -> 'b -> 'c [@bs]) -> 'a list -> 'b list -> unit
+val iter2 : ('a -> 'b -> 'c [@bs]) -> 'a t -> 'b t -> unit
 
 val foldLeft2 :
-  ('a -> 'b -> 'c -> 'a [@bs]) -> 'a -> 'b list -> 'c list -> 'a
+  ('a -> 'b -> 'c -> 'a [@bs]) -> 'a -> 'b t -> 'c t -> 'a
 
 val foldRight2 :
-  ('a -> 'b -> 'c -> 'c [@bs]) -> 'a list -> 'b list -> 'c -> 'c
+  ('a -> 'b -> 'c -> 'c [@bs]) -> 'a t -> 'b t -> 'c -> 'c
 
-val forAll : ('a -> bool [@bs]) -> 'a list -> bool
+val forAll : ('a -> bool [@bs]) -> 'a t -> bool
 
-val exists : ('a -> bool [@bs]) -> 'a list -> bool
+val exists : ('a -> bool [@bs]) -> 'a t -> bool
 
-val forAll2 : ('a -> 'b -> bool [@bs]) -> 'a list -> 'b list -> bool
+val forAll2 : ('a -> 'b -> bool [@bs]) -> 'a t -> 'b t -> bool
 
-val exists2 : ('a -> 'b -> bool [@bs]) -> 'a list -> 'b list -> bool
+val exists2 : ('a -> 'b -> bool [@bs]) -> 'a t -> 'b t -> bool
 
-val mem : ('a -> 'b -> bool [@bs]) -> 'b -> 'a list -> bool
+val mem : ('a -> 'b -> bool [@bs]) -> 'b -> 'a t -> bool
 
-val memq : 'a -> 'a list -> bool
+val memq : 'a -> 'a t -> bool
 
-val assocOpt : ('a -> 'b -> bool [@bs]) -> 'b -> ('a * 'c) list -> 'c option
+val assocOpt : ('a -> 'b -> bool [@bs]) -> 'b -> ('a * 'c) t -> 'c option
 
-val assqOpt : 'a -> ('a * 'b) list -> 'b option
+val assqOpt : 'a -> ('a * 'b) t -> 'b option
 
-val memAssoc : ('a -> 'b -> bool [@bs]) -> 'b -> ('a * 'c) list -> bool
+val memAssoc : ('a -> 'b -> bool [@bs]) -> 'b -> ('a * 'c) t -> bool
 
-val memAssq : 'a -> ('a * 'b) list -> bool
+val memAssq : 'a -> ('a * 'b) t -> bool
 
 val removeAssoc :
-  ('a -> 'b -> bool [@bs]) -> 'b -> ('a * 'c) list -> ('a * 'c) list
+  ('a -> 'b -> bool [@bs]) -> 'b -> ('a * 'c) t -> ('a * 'c) t
 
-val removeAssq : 'a -> ('a * 'b) list -> ('a * 'b) list
+val removeAssq : 'a -> ('a * 'b) t -> ('a * 'b) t
 
-val findOpt : ('a -> bool [@bs]) -> 'a list -> 'a option
+val findOpt : ('a -> bool [@bs]) -> 'a t -> 'a option
 
-val filter : ('a -> bool [@bs]) -> 'a list -> 'a t
+val filter : ('a -> bool [@bs]) -> 'a t -> 'a t
 
-val partition : ('a -> bool [@bs]) -> 'a list -> 'a t * 'a t
+val partition : ('a -> bool [@bs]) -> 'a t -> 'a t * 'a t
 
-val split : ('a * 'b) list -> 'a t * 'b t
+val unzip : ('a * 'b) t -> 'a t * 'b t
 
-val zip : 'a list -> 'b list -> ('a * 'b) t
+val zip : 'a t -> 'b t -> ('a * 'b) t
